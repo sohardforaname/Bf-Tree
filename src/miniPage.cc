@@ -3,7 +3,6 @@
 //
 
 #include "miniPage.hh"
-#include <algorithm>
 #include <cstring>
 
 namespace BFTree {

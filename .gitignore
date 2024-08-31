@@ -32,3 +32,6 @@
 *.app
 
 .idea/
+.cache/
+.vscode/
+build/
