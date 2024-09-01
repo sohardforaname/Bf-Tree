@@ -5,5 +5,3 @@ add_executable(TestBFTree
 set_target_properties(TestBFTree PROPERTIES
         COMPILE_FLAGS "-Werror"
 )
-
-target_link_libraries(TestBFTree PRIVATE BFTree)

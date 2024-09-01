@@ -28,8 +28,8 @@ struct KVMeta {
     uint16_t lookAhead; // 键的前两个字节
 };
 
-using Record = std::pair<const KVMeta*, unsigned char*>;
 using DataType = unsigned char*;
+using Record = std::pair<const KVMeta*, const unsigned char*>;
 using Key = std::pair<DataType, size_t>;
 using Value = Key;
 
@@ -40,9 +40,10 @@ struct MiniPage {
     std::vector <KVMeta> kvMetas; // KV 元数据数组
     std::vector<unsigned char> data; // 数据存储区
 
-    int getInternal(const Key& query) const;
+    size_t getGreaterEqualIndex(const Key& key) const;
+    size_t getEqualIndex(const Key& key) const;
 
-    Record get(const Key& query) const;
+    Record get(const Key& key) const;
     std::vector<Record> rangeScan(const Key& begin, const Key& end) const;
     void insert(const Key& key, const Value& val);
     void erase(const Key& key);

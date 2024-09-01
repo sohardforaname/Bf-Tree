@@ -1,0 +1,4 @@
+# ninja log v5
+0	693	1725100201853085853	test/CMakeFiles/TestBFTree.dir/miniPageTest.cc.o	df9761c5a279c805
+0	221	1725100049163083990	src/CMakeFiles/BFTree.dir/miniPage.cc.o	4107776c14e25caf
+221	237	1725100049173083990	src/libBFTree.a	5473e3dd9e74e058
