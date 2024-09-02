@@ -34,7 +34,11 @@ const KVMeta *MiniPage::getKVMeta(size_t idx) const {
 
 size_t MiniPage::getRecordCount() const { return getPageMeta()->recordCount; }
 
-const unsigned char *MiniPage::getValuePtr(const KVMeta *kvMeta) const {
+unsigned char *MiniPage::getKeyPtr(const KVMeta *kvMeta) const {
+  return buffer + bufferSize - kvMeta->offset;
+};
+
+unsigned char *MiniPage::getValuePtr(const KVMeta *kvMeta) const {
   return buffer + bufferSize - kvMeta->offset + kvMeta->keySize;
 }
 
@@ -108,6 +112,12 @@ void MiniPage::insert(const Key &key, const Value &val) {
           KVMeta(key, val);
 
   newKVMeta->offset = this->recordOffset + key.second + val.second;
+  getPageMetaMutable()->recordCount++;
+
+  memcpy(getKeyPtr(newKVMeta), key.first, key.second);
+  memcpy(getValuePtr(newKVMeta), val.first, val.second);
+
+  this->recordOffset += key.second + val.second;
 }
 
 void MiniPage::erase(const Key &key) {}
@@ -137,7 +147,7 @@ std::vector<Record> MiniPage::rangeScan(const Key &begin,
 
   for (size_t pos = beginIndex; pos <= endIndex; ++pos) {
     const KVMeta *kvMeta = this->getKVMeta(pos);
-    res.emplace_back(&kvMeta, getValuePtr(kvMeta));
+    res.emplace_back(kvMeta, getValuePtr(kvMeta));
   }
 
   return res;

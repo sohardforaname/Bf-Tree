@@ -12,4 +12,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 enable_testing()
 
-target_link_libraries(TestBFTree gtest gtest_main)
+target_link_libraries(TestBFTree PUBLIC BFTree gtest gtest_main)

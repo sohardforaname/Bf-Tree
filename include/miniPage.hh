@@ -16,7 +16,7 @@ struct KVMeta;
 
 using DataType = unsigned char *;
 using Record = std::pair<const KVMeta *, const unsigned char *>;
-using Key = std::pair<DataType, size_t>;
+using Key = std::pair<const DataType, size_t>;
 using Value = Key;
 
 const size_t KV_INSERT = 0x00;
@@ -26,10 +26,13 @@ const size_t KV_RESERVED = 0x11;
 
 struct PageMeta {
   uint16_t size;
-  int pageType : 8;
-  bool splitFlag : 8;
+  uint8_t pageType;
+  uint8_t splitFlag;
   uint16_t recordCount;
-  unsigned char leafPad[6];
+  unsigned char leafPad[6] = {0};
+
+  PageMeta(int pageType)
+      : size(0), pageType(pageType), splitFlag(false), recordCount(0) {}
 };
 
 struct KVMeta {
@@ -65,12 +68,20 @@ private:
 
   bool isFull(size_t kvSize) const;
   bool extendBuffer();
-  const unsigned char *getValuePtr(const KVMeta *kvMeta) const;
+  unsigned char *getKeyPtr(const KVMeta *kvMeta) const;
+  unsigned char *getValuePtr(const KVMeta *kvMeta) const;
 
   size_t getGreaterEqualIndex(const Key &key) const;
   size_t getEqualIndex(const Key &key) const;
 
 public:
+  MiniPage()
+      : bufferSize(64), recordOffset(0),
+        buffer(static_cast<unsigned char *>(
+            malloc(sizeof(unsigned char) * bufferSize))) {
+    new (buffer) PageMeta(MINIPAGE);
+  }
+
   Record get(const Key &key) const;
   std::vector<Record> rangeScan(const Key &begin, const Key &end) const;
   void insert(const Key &key, const Value &val);
