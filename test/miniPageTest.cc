@@ -55,6 +55,37 @@ TEST(miniPageTest, testInsert) {
   EXPECT_EQ(kvMeta->offset, 8);
 }
 
+TEST(miniPageTest, testErase) {
+  BFTree::Key keys[3] = {{(unsigned char *)("abc"), 3},
+                         {(unsigned char *)("xyz"), 2},
+                         {(unsigned char *)("cfxd"), 3}};
+  BFTree::Value vals[3] = {{(unsigned char *)("def"), 3},
+                           {(unsigned char *)("zyx"), 2},
+                           {(unsigned char *)("dxc"), 3}};
+  BFTree::MiniPage page;
+  for (int i = 0; i < 3; ++i) {
+    page.insert(keys[i], vals[i]);
+  }
+
+  page.erase({(unsigned char *)("zyx"), 2});
+  page.erase({(unsigned char *)("xyz"), 2});
+
+  const BFTree::PageMeta *meta =
+      reinterpret_cast<BFTree::PageMeta *>(page.buffer);
+
+  EXPECT_EQ(meta->recordCount, 2);
+  EXPECT_EQ(page.recordOffset, 16);
+  unsigned char *ptr = &page.buffer[page.bufferSize - page.recordOffset];
+  EXPECT_TRUE(memcmp(ptr, "cfx", 3) == 0);
+  EXPECT_TRUE(memcmp(ptr + 3, "dxc", 3) == 0);
+
+  const BFTree::KVMeta *kvMeta = reinterpret_cast<BFTree::KVMeta *>(
+      page.buffer + BFTree::kvMetaBegin + sizeof(BFTree::KVMeta) * 1);
+  EXPECT_EQ(kvMeta->keySize, 3);
+  EXPECT_EQ(kvMeta->valueSize, 3);
+  EXPECT_EQ(kvMeta->offset, 16);
+}
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

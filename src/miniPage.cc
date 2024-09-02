@@ -3,6 +3,8 @@
 //
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 
@@ -49,14 +51,13 @@ size_t MiniPage::getGreaterEqualIndex(const BFTree::Key &key) const {
   size_t l = 0, r = this->getRecordCount();
   while (l < r) {
     size_t m = (l + r) >> 1;
-    if (KeyComparator()(key, *this->getKVMeta(m)) < 0) {
-      r = m - 1;
+    if (KeyComparator()(key, *this->getKVMeta(m)) <= 0) {
+      r = m;
     } else {
-      l = m;
+      l = m + 1;
     }
   }
-  if (l == this->getPageMeta()->recordCount - 1 &&
-      KeyComparator()(key, *this->getKVMeta(l)) > 0) {
+  if (l == this->getPageMeta()->recordCount) {
     return -1;
   }
   return l;
@@ -69,9 +70,9 @@ size_t MiniPage::getEqualIndex(const Key &key) const {
   }
   // we query the kv by the first two bytes, it may get more than one answer.
   for (size_t pos = idx; pos < this->getRecordCount(); ++pos) {
-    const KVMeta &curKV = *this->getKVMeta(pos);
-    int res = memcmp(&this->buffer[curKV.offset], key.first,
-                     std::min(static_cast<size_t>(curKV.keySize), key.second));
+    const KVMeta *curKV = this->getKVMeta(pos);
+    int res = memcmp(getKeyPtr(curKV), key.first,
+                     std::min(static_cast<size_t>(curKV->keySize), key.second));
     if (res == 0) {
       return pos;
     } else if (res > 0) {
@@ -120,7 +121,17 @@ void MiniPage::insert(const Key &key, const Value &val) {
   this->recordOffset += key.second + val.second;
 }
 
-void MiniPage::erase(const Key &key) {}
+void MiniPage::erase(const Key &key) {
+  size_t idx = getEqualIndex(key);
+  if (idx == -1) {
+    return;
+  }
+  uint16_t *recordCount = &getPageMetaMutable()->recordCount;
+  memmove((void *)(getKVMeta(idx)), (void *)(getKVMeta(idx + 1)),
+          sizeof(KVMeta) * (0ul + *recordCount - idx - 1));
+
+  --(*recordCount);
+}
 
 std::vector<Record> MiniPage::rangeScan(const Key &begin,
                                         const Key &end) const {
