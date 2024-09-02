@@ -2,53 +2,81 @@
 // Created by mchxyz_ucchi on 8/31/24.
 //
 
-#include <vector>
+#include <cstdint>
 #include <string>
+#include <sys/types.h>
+#include <vector>
 
 #ifndef BF_TREE_MINIPAGE_HH
 #define BF_TREE_MINIPAGE_HH
 
 namespace BFTree {
 
-enum RecordType {
-    INSERT, // 新插入的记录
-    CACHE,  // 缓存的热点记录
-    TOMBSTONE, // 被删除的记录
-    PHANTOM // 负搜索结果
-};
+struct KVMeta;
 
-struct KVMeta {
-    uint32_t keyLen;   // 键长度
-    uint32_t valueLen; // 值长度
-    uint32_t keyOffset; // 键偏移量
-    uint32_t valueOffset; // 值偏移量
-    RecordType type; // 记录类型
-    bool fenceKey; // 是否为 fence key
-    bool reference; // 引用标志
-    uint16_t lookAhead; // 键的前两个字节
-};
-
-using DataType = unsigned char*;
-using Record = std::pair<const KVMeta*, const unsigned char*>;
+using DataType = unsigned char *;
+using Record = std::pair<const KVMeta *, const unsigned char *>;
 using Key = std::pair<DataType, size_t>;
 using Value = Key;
 
-struct MiniPage {
-    uint32_t size;        // MiniPage 大小
-    bool splitFlag;       // 是否已满
-    uint32_t valueCount;  // 记录数量
-    std::vector <KVMeta> kvMetas; // KV 元数据数组
-    std::vector<unsigned char> data; // 数据存储区
+const size_t KV_INSERT = 0x00;
+const size_t KV_CACHED = 0x01;
+const size_t KV_DELETED = 0x10;
+const size_t KV_RESERVED = 0x11;
 
-    size_t getGreaterEqualIndex(const Key& key) const;
-    size_t getEqualIndex(const Key& key) const;
-
-    Record get(const Key& key) const;
-    std::vector<Record> rangeScan(const Key& begin, const Key& end) const;
-    void insert(const Key& key, const Value& val);
-    void erase(const Key& key);
+struct PageMeta {
+  uint16_t size;
+  int pageType : 8;
+  bool splitFlag : 8;
+  uint16_t recordCount;
+  unsigned char leafPad[6];
 };
 
-}
+struct KVMeta {
+  uint16_t keySize : 14;
+  uint16_t valueSize : 14;
+  uint16_t offset : 16;
+  int type : 2;
+  bool fenceKey : 1;
+  bool reference : 1;
+  uint16_t lookAhead : 16;
 
-#endif //BF_TREE_MINIPAGE_HH
+  KVMeta(const Key &key, const Value &val)
+      : keySize(key.second), valueSize(val.second), type(KV_INSERT),
+        fenceKey(false), reference(false),
+        lookAhead(*reinterpret_cast<uint16_t *>(key.first)) {}
+};
+
+const int MINIPAGE = 0x0;
+const int LEAFPAGE = 0x1;
+
+const size_t kvMetaBegin = sizeof(PageMeta);
+
+struct MiniPage {
+  size_t bufferSize;
+  size_t recordOffset;
+  unsigned char *buffer;
+
+private:
+  const PageMeta *getPageMeta() const;
+  PageMeta *getPageMetaMutable();
+  const KVMeta *getKVMeta(size_t idx) const;
+  size_t getRecordCount() const;
+
+  bool isFull(size_t kvSize) const;
+  bool extendBuffer();
+  const unsigned char *getValuePtr(const KVMeta *kvMeta) const;
+
+  size_t getGreaterEqualIndex(const Key &key) const;
+  size_t getEqualIndex(const Key &key) const;
+
+public:
+  Record get(const Key &key) const;
+  std::vector<Record> rangeScan(const Key &begin, const Key &end) const;
+  void insert(const Key &key, const Value &val);
+  void erase(const Key &key);
+};
+
+} // namespace BFTree
+
+#endif // BF_TREE_MINIPAGE_HH
