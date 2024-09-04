@@ -11,15 +11,24 @@ MiniPage* RingBuffer::allocate(size_t pageSize) {
   return miniPage;
 }
 
-void RingBuffer::deallocate(MiniPage* miniPage) {
-  MiniPageHeader* pageHeader =
-      ((MiniPageHeader*)((unsigned char*)(miniPage)-8));
+void RingBuffer::setFreeList(MiniPageHeader* pageHeader) {
   pageHeader->status = MINIPAGE_FREELIST;
   pageHeader->pad = freeList[pageHeader->size >> 6];
   freeList[pageHeader->size >> 6] = (unsigned char*)(pageHeader)-bufferPtr;
+}
+
+void RingBuffer::deallocate(MiniPage* miniPage) {
+  setFreeList(((MiniPageHeader*)((unsigned char*)(miniPage)-8)));
   delete miniPage;
 }
 
-void evict() {}
+void RingBuffer::evictOneMiniPage() {
+  MiniPageHeader* pageHeader = (MiniPageHeader*)(bufferPtr + headerPtr);
+  size_t curMiniPageSize = sizeof(MiniPageHeader) + pageHeader->size;
+
+  setFreeList(pageHeader);
+
+  headerPtr += curMiniPageSize;
+}
 
 }  // namespace BFTree

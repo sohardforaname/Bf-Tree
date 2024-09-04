@@ -43,10 +43,12 @@ struct RingBuffer {
 
   RingBuffer() : bufferPtr((unsigned char*)(malloc(BUFFERSIZE))) {}
 
+  void setFreeList(MiniPageHeader* pageHeader);
   MiniPage* allocate(size_t pageSize);
   void deallocate(MiniPage* miniPage);
   void mergeFragment();
-  void evict();
+
+  void evictOneMiniPage();
 };
 
 }  // namespace BFTree
