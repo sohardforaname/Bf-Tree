@@ -2,9 +2,10 @@
 // Created by mchxyz_ucchi on 8/31/24.
 //
 
+#include <sys/types.h>
+
 #include <cstdint>
 #include <string>
-#include <sys/types.h>
 #include <vector>
 
 #ifndef BF_TREE_MINIPAGE_HH
@@ -24,6 +25,8 @@ const size_t KV_CACHED = 0x01;
 const size_t KV_DELETED = 0x10;
 const size_t KV_RESERVED = 0x11;
 
+const size_t INIT_MINIPAGE_SIZE = 64;
+
 struct PageMeta {
   uint16_t size;
   uint8_t pageType;
@@ -32,7 +35,10 @@ struct PageMeta {
   unsigned char leafPad[6] = {0};
 
   PageMeta(int pageType)
-      : size(0), pageType(pageType), splitFlag(false), recordCount(0) {}
+      : size(INIT_MINIPAGE_SIZE),
+        pageType(pageType),
+        splitFlag(false),
+        recordCount(0) {}
 };
 
 struct KVMeta {
@@ -45,8 +51,11 @@ struct KVMeta {
   uint16_t lookAhead : 16;
 
   KVMeta(const Key &key, const Value &val)
-      : keySize(key.second), valueSize(val.second), type(KV_INSERT),
-        fenceKey(false), reference(false),
+      : keySize(key.second),
+        valueSize(val.second),
+        type(KV_INSERT),
+        fenceKey(false),
+        reference(false),
         lookAhead(*reinterpret_cast<uint16_t *>(key.first)) {}
 };
 
@@ -56,11 +65,9 @@ const int LEAFPAGE = 0x1;
 const size_t kvMetaBegin = sizeof(PageMeta);
 
 struct MiniPage {
-  size_t bufferSize;
-  size_t recordOffset;
   unsigned char *buffer;
 
-private:
+ private:
   const PageMeta *getPageMeta() const;
   PageMeta *getPageMetaMutable();
   const KVMeta *getKVMeta(size_t idx) const;
@@ -74,11 +81,12 @@ private:
   size_t getGreaterEqualIndex(const Key &key) const;
   size_t getEqualIndex(const Key &key) const;
 
-public:
-  MiniPage()
-      : bufferSize(64), recordOffset(0),
-        buffer(static_cast<unsigned char *>(
-            malloc(sizeof(unsigned char) * bufferSize))) {
+  size_t getBufferSize() const;
+  size_t getRecordOffset() const;
+
+ public:
+  MiniPage() = delete;
+  MiniPage(unsigned char *buffer) : buffer(buffer) {
     new (buffer) PageMeta(MINIPAGE);
   }
 
@@ -88,6 +96,6 @@ public:
   void erase(const Key &key);
 };
 
-} // namespace BFTree
+}  // namespace BFTree
 
-#endif // BF_TREE_MINIPAGE_HH
+#endif  // BF_TREE_MINIPAGE_HH

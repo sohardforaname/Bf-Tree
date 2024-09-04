@@ -2,13 +2,13 @@
 // Created by mchxyz_ucchi on 8/31/24.
 //
 
+#include "miniPage.hh"
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-
-#include "miniPage.hh"
 
 namespace BFTree {
 
@@ -31,17 +31,23 @@ const PageMeta *MiniPage::getPageMeta() const {
 
 const KVMeta *MiniPage::getKVMeta(size_t idx) const {
   return reinterpret_cast<const KVMeta *>(buffer + kvMetaBegin +
-      sizeof(KVMeta) * idx);
+                                          sizeof(KVMeta) * idx);
 }
 
 size_t MiniPage::getRecordCount() const { return getPageMeta()->recordCount; }
 
 unsigned char *MiniPage::getKeyPtr(const KVMeta *kvMeta) const {
-  return buffer + bufferSize - kvMeta->offset;
+  return buffer + getBufferSize() - kvMeta->offset;
 };
 
 unsigned char *MiniPage::getValuePtr(const KVMeta *kvMeta) const {
-  return buffer + bufferSize - kvMeta->offset + kvMeta->keySize;
+  return buffer + getBufferSize() - kvMeta->offset + kvMeta->keySize;
+}
+
+size_t MiniPage::getBufferSize() const { return getPageMeta()->size; }
+
+size_t MiniPage::getRecordOffset() const {
+  return getKVMeta(getPageMeta()->recordCount - 1)->offset;
 }
 
 // get the first record index of kvMeta greater equal than given key
@@ -94,13 +100,13 @@ Record MiniPage::get(const Key &key) const {
 
 bool MiniPage::extendBuffer() {
   this->buffer = static_cast<unsigned char *>(
-      std::realloc(this->buffer, this->bufferSize << 1));
+      std::realloc(this->buffer, getBufferSize() << 1));
   return this->buffer != nullptr;
 }
 
 bool MiniPage::isFull(size_t kvSize) const {
   return kvMetaBegin + sizeof(KVMeta) * (getRecordCount() + 1) + kvSize >
-      bufferSize - recordOffset;
+         getBufferSize() - getRecordOffset();
 }
 
 // kvs in miniPage is sorted, so we do sort when inserting.
@@ -109,10 +115,10 @@ void MiniPage::insert(const Key &key, const Value &val) {
     this->extendBuffer();
   }
   KVMeta *newKVMeta =
-      new(buffer + kvMetaBegin + sizeof(KVMeta) * getRecordCount())
+      new (buffer + kvMetaBegin + sizeof(KVMeta) * getRecordCount())
           KVMeta(key, val);
 
-  newKVMeta->offset = this->recordOffset + key.second + val.second;
+  newKVMeta->offset = this->getRecordOffset() + key.second + val.second;
   getPageMetaMutable()->recordCount++;
 
   memcpy(getKeyPtr(newKVMeta), key.first, key.second);
@@ -124,17 +130,17 @@ void MiniPage::insert(const Key &key, const Value &val) {
     ptrArray[i] = this->getKVMeta(i);
   }
 
-  std::sort(ptrArray, ptrArray + recordCount, [](const KVMeta *a, const KVMeta *b) {
-    return a->lookAhead < b->lookAhead;
-  });
+  std::sort(ptrArray, ptrArray + recordCount,
+            [](const KVMeta *a, const KVMeta *b) {
+              return a->lookAhead < b->lookAhead;
+            });
 
-  KVMeta *newMetaArray = (KVMeta *) (malloc(sizeof(KVMeta) * recordCount));
+  KVMeta *newMetaArray = (KVMeta *)(malloc(sizeof(KVMeta) * recordCount));
   for (int i = 0; i < recordCount; ++i) {
     memcpy(newMetaArray + i, ptrArray[i], sizeof(KVMeta));
   }
-  memcpy(this->buffer + kvMetaBegin, newMetaArray, sizeof(KVMeta) * recordCount);
-
-  this->recordOffset += key.second + val.second;
+  memcpy(this->buffer + kvMetaBegin, newMetaArray,
+         sizeof(KVMeta) * recordCount);
 }
 
 void MiniPage::erase(const Key &key) {
@@ -143,7 +149,7 @@ void MiniPage::erase(const Key &key) {
     return;
   }
   uint16_t *recordCount = &getPageMetaMutable()->recordCount;
-  memmove((void *) (getKVMeta(idx)), (void *) (getKVMeta(idx + 1)),
+  memmove((void *)(getKVMeta(idx)), (void *)(getKVMeta(idx + 1)),
           sizeof(KVMeta) * (0ul + *recordCount - idx - 1));
 
   --(*recordCount);
@@ -181,4 +187,4 @@ std::vector<Record> MiniPage::rangeScan(const Key &begin,
   return res;
 }
 
-} // namespace BFTree
+}  // namespace BFTree
