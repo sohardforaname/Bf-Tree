@@ -2,9 +2,8 @@
 // Created by mchxyz_ucchi on 8/31/24.
 //
 
-#include <sys/types.h>
-
 #include <cstdint>
+#include <unordered_map>
 
 #include "miniPage.hh"
 
@@ -31,7 +30,14 @@ struct BufferedMiniPage {
   unsigned char* content;
 };
 
+using PageId = unsigned int;
+
+struct MappingTable {
+  std::unordered_map<PageId, uint64_t> map;
+};
+
 struct RingBuffer {
+  MappingTable mappingTable;
   unsigned char* bufferPtr;
   size_t bufferSize = BUFFERSIZE;
 
