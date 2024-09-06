@@ -61,6 +61,9 @@ int flushToFile(const Table* table, const Block* block) {
 
 int mergeMiniPage(MiniPage* miniPage, Page dataPage) {
   // we assume that kvs in the leaf page is sorted.
+  // calculate the space for merge, if there's not enough space for merging
+  // the leaf page should split.
+
   
 }
 
